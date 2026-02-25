@@ -1,0 +1,33 @@
+{
+	"name": "antigravity-auto-accept-custom",
+	"displayName": "Antigravity Auto Accept (Custom)",
+	"description": "自動接受 Antigravity agent 的所有步驟 — 檔案修改、終端指令、自動補全。",
+	"version": "2.0.0",
+	"icon": "icon.png",
+	"publisher": "custom",
+	"engines": {
+		"vscode": "^1.60.0"
+	},
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./extension.js",
+	"categories": [
+		"Other"
+	],
+	"contributes": {
+		"commands": [
+			{
+				"command": "unlimited.toggle",
+				"title": "Toggle Auto-Accept"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "unlimited.toggle",
+				"key": "ctrl+alt+shift+u",
+				"mac": "cmd+alt+shift+u"
+			}
+		]
+	}
+}
