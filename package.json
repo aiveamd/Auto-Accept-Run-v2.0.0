@@ -2,7 +2,7 @@
 	"name": "antigravity-auto-accept-custom",
 	"displayName": "Antigravity Auto Accept (Custom)",
 	"description": "自動接受 Antigravity agent 的所有步驟 — 檔案修改、終端指令、自動補全。",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"icon": "icon.png",
 	"publisher": "custom",
 	"engines": {

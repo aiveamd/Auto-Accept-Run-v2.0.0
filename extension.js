@@ -47,10 +47,8 @@ function activate(context) {
         enabled = !enabled;
         updateStatusBar();
         if (enabled) {
-            vscode.window.showInformationMessage('Auto-Accept: ON ✅');
             outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] 已啟用`);
         } else {
-            vscode.window.showInformationMessage('Auto-Accept: OFF 🛑');
             outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] 已停用`);
         }
     });

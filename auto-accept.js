@@ -79,6 +79,9 @@
     'remove',
     'discard',
     'revert',
+    'auto-accept',  // 防止點到狀態列 toggle 按鈕
+    'auto accept',  // 同上（不同格式）
+    'toggle',
     '取消',
     '拒絕',
     '刪除',
