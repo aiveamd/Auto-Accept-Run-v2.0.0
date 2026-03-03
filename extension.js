@@ -6,23 +6,38 @@ let enabled = true;
 let statusBarItem;
 let domInjected = false;
 
-// 完整的 Antigravity accept commands 列表
+// ✅ 正確的 Antigravity accept commands（從原始碼 nls.keys.json 找到的）
 const ACCEPT_COMMANDS = [
-    'antigravity.agent.acceptAgentStep',
-    'antigravity.command.accept',
-    'antigravity.prioritized.agentAcceptAllInFile',
-    'antigravity.prioritized.agentAcceptFocusedHunk',
-    'antigravity.prioritized.supercompleteAccept',
-    'antigravity.acceptCompletion',
-    'antigravity.terminal.accept',
-    'antigravity.terminalCommand.accept',
-    'antigravity.prioritized.terminalSuggestion.accept',
-    'antigravity.simpleBrowser.allow',
-    'antigravity.browser.allow',
-    'antigravity.browser.allowJavaScript',
-    'antigravity.dialog.accept',
-    'antigravity.dialog.confirm',
-    'antigravity.notification.accept',
+    // Agent 工具/步驟接受
+    'chatAgent.acceptTool',
+    'chatAgent.autoApprove',
+    'chatAgent.runCommand',
+
+    // 檔案修改接受
+    'chatEditing.acceptAllFiles',
+    'chatEditing.acceptFile',
+    'chatEditing.acceptHunk',
+
+    // 終端指令接受
+    'poll.terminal.accept',
+    'poll.terminal.acceptRun',
+
+    // 終端建議接受
+    'workbench.action.terminal.acceptSelectedSuggestion',
+    'workbench.action.terminal.acceptSelectedSuggestionEnter',
+
+    // MCP 接受
+    'mcp.elicit.accept',
+
+    // 工具允許
+    'tool.allow',
+
+    // 合併編輯器接受
+    'mergeEditor.accept',
+    'mergeEditor.acceptMerge',
+
+    // Inline 補全/編輯接受
+    'editor.action.accessibleViewAcceptInlineCompletionAction',
 ];
 
 // DOM auto-click 腳本（會被注入到 Electron 主視窗）
@@ -56,22 +71,14 @@ function tryInjectDOMScript(outputChannel) {
     if (domInjected) return;
 
     const attempts = [
-        // 方法 1: 直接 require electron
         () => {
             const { BrowserWindow } = require('electron');
             return BrowserWindow.getAllWindows();
         },
-        // 方法 2: 透過 process.mainModule
         () => {
             const mainModule = process.mainModule || require.main;
             if (!mainModule) throw new Error('No main module');
             const { BrowserWindow } = mainModule.require('electron');
-            return BrowserWindow.getAllWindows();
-        },
-        // 方法 3: 透過 global require
-        () => {
-            const electronPath = require.resolve('electron');
-            const { BrowserWindow } = require(electronPath);
             return BrowserWindow.getAllWindows();
         },
     ];
@@ -80,30 +87,30 @@ function tryInjectDOMScript(outputChannel) {
         try {
             const windows = attempts[i]();
             if (windows && windows.length > 0) {
-                // 對所有視窗注入腳本
                 for (const win of windows) {
                     try {
                         win.webContents.executeJavaScript(DOM_SCRIPT)
                             .then(() => {
                                 domInjected = true;
-                                outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ✅ DOM 腳本已注入 (方法 ${i + 1})`);
+                                outputChannel.appendLine(`[${ts()}] ✅ DOM 腳本已注入 (方法 ${i + 1})`);
                             })
                             .catch(err => {
-                                outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ⚠️ DOM 注入回傳錯誤: ${err.message}`);
+                                outputChannel.appendLine(`[${ts()}] ⚠️ DOM 注入失敗: ${err.message}`);
                             });
-                    } catch (winErr) {
-                        // 個別視窗注入失敗，繼續下一個
-                    }
+                    } catch (winErr) { }
                 }
-                return; // 成功找到視窗，退出
+                return;
             }
         } catch (e) {
-            // 這個方法不行，試下一個
-            outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] 方法 ${i + 1} 失敗: ${e.message}`);
+            outputChannel.appendLine(`[${ts()}] 方法 ${i + 1} 不可用: ${e.message}`);
         }
     }
 
-    outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] ⚠️ 無法注入 DOM 腳本，Electron API 不可用。請手動在 DevTools Console 貼上腳本。`);
+    outputChannel.appendLine(`[${ts()}] ⚠️ 無法注入 DOM 腳本 — Electron API 不可用`);
+}
+
+function ts() {
+    return new Date().toLocaleTimeString();
 }
 
 function activate(context) {
@@ -114,11 +121,7 @@ function activate(context) {
     let disposable = vscode.commands.registerCommand('unlimited.toggle', function () {
         enabled = !enabled;
         updateStatusBar();
-        if (enabled) {
-            outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] 已啟用`);
-        } else {
-            outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] 已停用`);
-        }
+        outputChannel.appendLine(`[${ts()}] ${enabled ? '已啟用' : '已停用'}`);
     });
     context.subscriptions.push(disposable);
 
@@ -128,22 +131,19 @@ function activate(context) {
         context.subscriptions.push(statusBarItem);
         updateStatusBar();
         statusBarItem.show();
-    } catch (e) {
-        // 靜默失敗
-    }
+    } catch (e) { }
 
     // 啟動 VS Code commands 輪詢
     startLoop(outputChannel);
 
-    // 嘗試注入 DOM 腳本（延遲 3 秒等視窗完全載入）
+    // 嘗試注入 DOM 腳本
     setTimeout(() => tryInjectDOMScript(outputChannel), 3000);
-    // 再次嘗試（有些視窗可能延遲建立）
     setTimeout(() => tryInjectDOMScript(outputChannel), 10000);
 
-    outputChannel.appendLine(`Auto Accept (Custom) v2.2.0 已啟動`);
+    outputChannel.appendLine(`Auto Accept (Custom) v2.3.0 已啟動`);
     outputChannel.appendLine(`監控 ${ACCEPT_COMMANDS.length} 個 accept commands`);
+    outputChannel.appendLine(`Commands: ${ACCEPT_COMMANDS.join(', ')}`);
     outputChannel.appendLine(`輪詢間隔: 400ms`);
-    outputChannel.appendLine(`將嘗試自動注入 DOM auto-click 腳本...`);
 }
 
 function updateStatusBar() {
