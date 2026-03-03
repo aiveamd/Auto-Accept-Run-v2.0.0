@@ -1,33 +1,56 @@
 {
 	"name": "antigravity-auto-accept-custom",
-	"displayName": "Antigravity Auto Accept (Custom)",
-	"description": "自動接受 Antigravity agent 的所有步驟 — 檔案修改、終端指令、自動補全。",
-	"version": "2.3.0",
-	"icon": "icon.png",
+	"displayName": "Auto Accept Agent (Unlocked)",
+	"description": "Auto-accept file edits, terminal commands, and agent prompts. Based on MunKhin's Auto Accept Agent, all features unlocked.",
+	"version": "12.7.1",
 	"publisher": "custom",
+	"license": "MIT",
+	"icon": "icon.png",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/aiveamd/Auto-Accept-Run-v2.0.0"
+	},
+	"categories": [
+		"Machine Learning",
+		"Other"
+	],
+	"keywords": [
+		"antigravity",
+		"cursor",
+		"ai",
+		"auto-accept"
+	],
 	"engines": {
-		"vscode": "^1.60.0"
+		"vscode": "^1.75.0"
 	},
 	"activationEvents": [
 		"onStartupFinished"
 	],
-	"main": "./extension.js",
-	"categories": [
-		"Other"
-	],
+	"main": "dist/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "unlimited.toggle",
-				"title": "Toggle Auto-Accept"
-			}
-		],
-		"keybindings": [
+				"command": "auto-accept.toggle",
+				"title": "Auto Accept: Toggle ON/OFF"
+			},
 			{
-				"command": "unlimited.toggle",
-				"key": "ctrl+alt+shift+u",
-				"mac": "cmd+alt+shift+u"
+				"command": "auto-accept.toggleBackground",
+				"title": "Auto Accept: Toggle Background Mode"
+			},
+			{
+				"command": "auto-accept.openSettings",
+				"title": "Auto Accept: Settings"
+			},
+			{
+				"command": "auto-accept.generateSessionSummary",
+				"title": "Auto Accept: Generate Session Summary"
 			}
 		]
+	},
+	"dependencies": {
+		"ws": "^8.13.0"
+	},
+	"devDependencies": {
+		"esbuild": "^0.27.3"
 	}
 }
