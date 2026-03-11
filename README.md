@@ -1,76 +1,77 @@
-# Antigravity Auto Accept 自動確認工具
+# Auto Accept Agent (Unlocked) v12.7.1
 
-## 問題
-Antigravity 的內建設定 (Auto Execution: Always Proceed, Review Policy: Always Proceed) 以及擴充套件 (Auto Accept Agent) 都無法正常自動確認。
+基於 MunKhin 的 Auto Accept Agent v12.7.0，移除所有付費限制。
 
-## 解決方案
+## 安裝步驟
 
-### 方案一：JavaScript Console 注入（推薦 ✅）
+### 1. 安裝擴充套件
+```bash
+# 下載 vsix（用瀏覽器去 GitHub releases 下載，或用 git clone）
+git clone https://github.com/aiveamd/Auto-Accept-Run-v2.0.0.git
 
-**步驟：**
-
-1. 打開 Antigravity
-2. 按 `Help` → `Toggle Developer Tools`（或按 `Ctrl+Shift+I`）
-3. 切到 **Console** 分頁
-4. 複製 `auto-accept.js`（完整版）或 `auto-accept-mini.js`（精簡版）的內容
-5. 貼到 Console 裡，按 **Enter**
-6. 看到 `🚀 Auto Accept ON!` 就代表成功了
-
-**控制指令（在 Console 輸入）：**
-
-```js
-__autoAccept.stop()    // 停止自動確認
-__autoAccept.start()   // 重新啟動
-__autoAccept.status()  // 查看狀態和累計點擊次數
-__autoAccept.reset()   // 重置計數器
+# 安裝 vsix
+antigravity --install-extension ./antigravity-auto-accept-custom-12.7.1.vsix --force
 ```
 
-> ⚠️ **注意**：每次重啟 Antigravity 都需要重新貼一次腳本。
+### 2. 設定 CDP（必要）
 
----
+以**系統管理員身份**開啟 PowerShell，貼上以下腳本：
 
-### 方案二：搭配 Advanced Settings 設定
-
-除了腳本之外，建議也調整以下進階設定：
-
-1. 打開 Antigravity 設定
-2. 點 **Advanced Settings**
-3. 找到 **Terminal** 區段
-4. 將 **Terminal Command Auto Execution** 改為 `Turbo`（如果有的話）
-5. 確認 **Agent Review Policy** = `Always Proceed`
-6. 確認 **Deny List** 是空的（沒有被封鎖的指令）
-
----
-
-### 方案三：安裝 pesosz 的 Antigravity Auto Accept 擴充套件
-
-如果上面兩個方案仍有問題，可以試試這個擴充套件：
-
-1. 在 Antigravity 的 Extensions 搜尋 `Antigravity Auto Accept`（發布者：pesosz）
-2. 安裝並重啟 Antigravity
-3. 用 `Ctrl+Alt+Shift+U` 切換開關
-4. 狀態列會顯示 🟢（啟用）或 🔴（停用）
-
----
-
-## 檔案說明
-
-| 檔案 | 說明 |
-|------|------|
-| `auto-accept.js` | 完整版腳本，有詳細註解，可自訂設定 |
-| `auto-accept-mini.js` | 精簡版一行腳本，方便快速貼到 Console |
-| `README.md` | 本說明文件 |
-
-## 自訂設定（完整版）
-
-打開 `auto-accept.js`，修改 `CONFIG` 物件：
-
-```js
-const CONFIG = {
-  CHECK_INTERVAL: 800,         // 檢查間隔（毫秒）
-  AUTO_ACCEPT_EDITS: true,     // 自動接受檔案修改
-  AUTO_ACCEPT_COMMANDS: true,  // 自動執行終端指令
-  AUTO_ACCEPT_SAVE: true,      // 自動確認儲存
-  SHOW_LOGS: true,             // Console 顯示日誌
-};
+```powershell
+$WshShell = New-Object -ComObject WScript.Shell
+$searchLocations = @(
+    [Environment]::GetFolderPath('Desktop'),
+    "$env:USERPROFILE\Desktop",
+    "$env:USERPROFILE\OneDrive\Desktop",
+    "$env:APPDATA\Microsoft\Windows\Start Menu\Programs",
+    "$env:ProgramData\Microsoft\Windows\Start Menu\Programs",
+    "$env:USERPROFILE\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+)
+$foundShortcuts = @()
+foreach ($location in $searchLocations) {
+    if (Test-Path $location) {
+        $shortcuts = Get-ChildItem -Path $location -Recurse -Filter "*.lnk" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*Antigravity*" }
+        $foundShortcuts += $shortcuts
+    }
+}
+if ($foundShortcuts.Count -eq 0) {
+    $exePath = "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe"
+    if (Test-Path $exePath) {
+        $desktopPath = [Environment]::GetFolderPath('Desktop')
+        $shortcutPath = "$desktopPath\Antigravity.lnk"
+        $shortcut = $WshShell.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = $exePath
+        $shortcut.Arguments = "--remote-debugging-port=9000"
+        $shortcut.Save()
+        Write-Host "Created: $shortcutPath"
+    }
+} else {
+    foreach ($shortcutFile in $foundShortcuts) {
+        $shortcut = $WshShell.CreateShortcut($shortcutFile.FullName)
+        $originalArgs = $shortcut.Arguments
+        if ($originalArgs -match "--remote-debugging-port=\d+") {
+            $shortcut.Arguments = $originalArgs -replace "--remote-debugging-port=\d+", "--remote-debugging-port=9000"
+        } else {
+            $shortcut.Arguments = "--remote-debugging-port=9000 " + $originalArgs
+        }
+        $shortcut.Save()
+        Write-Host "Updated: $($shortcutFile.FullName)"
+    }
+}
+Write-Host "Done! Restart Antigravity."
 ```
+
+### 3. 重啟 Antigravity
+完全關閉 Antigravity，再用桌面捷徑或開始選單重新開啟。
+
+## Antigravity 更新後修復
+
+每次 Antigravity 更新後，CDP flag 會被覆蓋。只需要：
+1. 重跑上面的 PowerShell 腳本
+2. 重啟 Antigravity
+
+## 狀態列說明
+
+- `✓ Auto Accept: ON` — 正常運行中
+- `Background: OFF/ON` — 多聊天背景模式
+- `⚙️` — 設定面板
