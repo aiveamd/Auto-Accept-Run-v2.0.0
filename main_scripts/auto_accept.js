@@ -187,7 +187,7 @@
         const state = window.__autoAcceptState;
         const ide = state ? state.ide : 'cursor';
         if (ide === 'antigravity') {
-            return ['.bg-ide-button-background', 'button.bg-primary', 'button.rounded-l'];
+            return ['button', '.bg-ide-button-background', 'button.bg-primary', 'button.rounded-l', '[class*="button"]'];
         }
         return ['button', '[class*="button"]', '[class*="anysphere"]'];
     }
