@@ -56,7 +56,7 @@
     // =================================================================
 
     const acceptPatterns = ['accept', 'run', 'retry', 'apply', 'execute', 'confirm', 'always allow', 'allow once', 'allow'];
-    const rejectPatterns = ['skip', 'reject', 'cancel', 'close', 'refine'];
+    const rejectPatterns = ['skip', 'reject', 'cancel', 'close', 'refine', 'always run', 'ask every time', 'ask every'];
     const COMMAND_ELEMENTS = ['pre', 'code', 'pre code'];
 
     // --- BANNED COMMAND DETECTION (from modules/03_clicking.js) ---
@@ -192,22 +192,62 @@
         return ['button', '[class*="button"]', '[class*="anysphere"]'];
     }
 
+    // Debounce map: buttonText -> last click timestamp
+    const _clickDebounce = {};
+    const DEBOUNCE_MS = 3000; // 同一按鈕文字 3 秒內不重複點擊
+
+    // 偵測聊天輸入框是否有 focus
+    function isChatInputFocused() {
+        const active = document.activeElement;
+        if (!active) return false;
+        const tag = active.tagName?.toLowerCase();
+        // textarea 或 contenteditable 的 div（Antigravity chat input）
+        if (tag === 'textarea') return true;
+        if (active.isContentEditable) return true;
+        if (active.getAttribute('role') === 'textbox') return true;
+        // 也檢查 iframe 裡的 active element
+        for (const doc of getDocuments()) {
+            try {
+                const ae = doc.activeElement;
+                if (ae && (ae.tagName?.toLowerCase() === 'textarea' || ae.isContentEditable || ae.getAttribute('role') === 'textbox')) {
+                    return true;
+                }
+            } catch (e) { }
+        }
+        return false;
+    }
+
     function clickAcceptButtons() {
         // Pause while user is manually interacting with the IDE
         if (window.__autoAcceptState?.userInteracting) return 0;
+        // Pause while chat input is focused (user is typing)
+        if (isChatInputFocused()) return 0;
+
         const selectors = getButtonSelectors();
+        const now = Date.now();
         let clicked = 0;
         for (const selector of selectors) {
             const els = queryAll(selector);
             for (const el of els) {
                 if (isAcceptButton(el)) {
-                    const btnText = (el.textContent || '').trim();
+                    const btnText = (el.textContent || '').trim().toLowerCase();
+                    // Debounce: 同一按鈕文字在冷卻期內不重複點擊
+                    if (_clickDebounce[btnText] && (now - _clickDebounce[btnText]) < DEBOUNCE_MS) {
+                        continue;
+                    }
+                    _clickDebounce[btnText] = now;
                     log(`Clicking: "${btnText}"`);
                     el.dispatchEvent(new MouseEvent('click', { view: window, bubbles: true, cancelable: true }));
                     clicked++;
                     const state = window.__autoAcceptState;
                     if (state) state.clicks = (state.clicks || 0) + 1;
                 }
+            }
+        }
+        // 清理過期的 debounce 記錄（避免記憶體洩漏）
+        for (const key in _clickDebounce) {
+            if ((now - _clickDebounce[key]) > DEBOUNCE_MS * 3) {
+                delete _clickDebounce[key];
             }
         }
         return clicked;
@@ -1078,17 +1118,21 @@
         state.userInteracting = false;
         if (state._userInteractingTimer) { clearTimeout(state._userInteractingTimer); state._userInteractingTimer = null; }
 
-        // Pause clicking when user mousedowns anywhere in the IDE window
-        if (state._onUserInteract) document.removeEventListener('mousedown', state._onUserInteract, true);
+        // Pause clicking when user interacts (mouse OR keyboard) anywhere in the IDE window
+        if (state._onUserInteract) {
+            document.removeEventListener('mousedown', state._onUserInteract, true);
+            document.removeEventListener('keydown', state._onUserInteract, true);
+        }
         const onUserInteract = () => {
             const s = window.__autoAcceptState;
             if (!s || !s.isRunning) return;
             s.userInteracting = true;
             if (s._userInteractingTimer) clearTimeout(s._userInteractingTimer);
-            s._userInteractingTimer = setTimeout(() => { s.userInteracting = false; }, 1500);
+            s._userInteractingTimer = setTimeout(() => { s.userInteracting = false; }, 3000);
         };
         state._onUserInteract = onUserInteract;
         document.addEventListener('mousedown', onUserInteract, true);
+        document.addEventListener('keydown', onUserInteract, true);
 
         // Apply banned commands if provided
         if (config.bannedCommands) {
@@ -1147,6 +1191,7 @@
 
         if (state._onUserInteract) {
             document.removeEventListener('mousedown', state._onUserInteract, true);
+            document.removeEventListener('keydown', state._onUserInteract, true);
             state._onUserInteract = null;
         }
         if (state._userInteractingTimer) {
